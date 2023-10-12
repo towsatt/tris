@@ -10,7 +10,7 @@ pub fn simulate(
     opponent: i32,
     winning_moves: &mut HashMap<String, MovesChoice>,
 ) -> [f64; 2] {
-    let key = to_key(mat, player);
+    let key = to_key(mat, player, 0);
     if winning_moves.contains_key(&key) {
         return [winning_moves[&key].results, winning_moves[&key].moves];
     }
@@ -18,17 +18,7 @@ pub fn simulate(
     match stat {
         0 => {
             let tomove = win(mat, player);
-            winning_moves.insert(
-                key.clone(),
-                MovesChoice {
-                    action: Move {
-                        x: tomove.x,
-                        y: tomove.y,
-                    },
-                    results: 1.0,
-                    moves: 1.0,
-                },
-            );
+            add_move(mat, tomove, player, winning_moves, 1.0, 1.0);
         }
         1 => {
             iterate_mat(mat, player, opponent, winning_moves, key.clone());
@@ -52,52 +42,77 @@ pub fn simulate(
     [winning_moves[&key].results, winning_moves[&key].moves]
 }
 
-pub fn to_key(mat: [[i32; 3]; 3], player: i32) -> String {
+pub fn to_key(mat: [[i32; 3]; 3], player: i32, dir: i32) -> String {
     let mut s = "".to_string();
-    for i in mat {
-        for j in i {
-            s += if j == 0 {
-                "0"
-            } else if j == player {
-                "p"
-            } else {
-                "o"
-            };
+    match dir {
+        0 => {
+            for i in mat {
+                for j in i {
+                    s += if j == 0 {
+                        "0"
+                    } else if j == player {
+                        "p"
+                    } else {
+                        "o"
+                    };
+                }
+            }
         }
+        1 => {
+            for i in 0..3 {
+                for j in (0..3).rev() {
+                    s += if mat[j][i] == 0 {
+                        "0"
+                    } else if mat[j][i] == player {
+                        "p"
+                    } else {
+                        "o"
+                    };
+                }
+            }
+        }
+        2 => {
+            for i in (0..3).rev() {
+                for j in (0..3).rev() {
+                    s += if mat[i][j] == 0 {
+                        "0"
+                    } else if mat[i][j] == player {
+                        "p"
+                    } else {
+                        "o"
+                    };
+                }
+            }
+        }
+        3 => {
+            for i in (0..3).rev() {
+                for j in mat {
+                    s += if j[i] == 0 {
+                        "0"
+                    } else if j[i] == player {
+                        "p"
+                    } else {
+                        "o"
+                    };
+                }
+            }
+        }
+        _ => unreachable!(),
     }
     s
 }
-
-// fn out(mat: [[i32; 3]; 3]) {
-//     for i in mat {
-//         for j in i {
-//             print!(
-//                 "{} ",
-//                 if j == 1 {
-//                     "X"
-//                 } else if j == 2 {
-//                     "O"
-//                 } else {
-//                     " "
-//                 }
-//             );
-//         }
-//         println!();
-//     }
-//     println!();
-// }
 #[derive(Clone, Copy)]
-pub struct Move {
+pub struct Coord {
     pub x: usize,
     pub y: usize,
 }
 pub struct MovesChoice {
-    pub action: Move,
+    pub action: Coord,
     pub results: f64,
     pub moves: f64,
 }
 
-impl std::fmt::Display for Move {
+impl std::fmt::Display for Coord {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "({};{})", self.x, self.y)
     }
@@ -118,7 +133,7 @@ fn iterate_mat(
 ) -> [f64; 2] {
     let mut results = 0.0;
     let mut moves = 0.0;
-    let mut winning: Move = Move { x: 3, y: 3 };
+    let mut winning: Coord = Coord { x: 3, y: 3 };
     let mut highest_weight = -1.0;
     for i in 0..3 {
         for j in 0..3 {
@@ -131,18 +146,39 @@ fn iterate_mat(
                 moves += n_m;
                 if n_h_w > highest_weight {
                     highest_weight = n_h_w;
-                    winning = Move { x: j, y: i };
+                    winning = Coord { x: j, y: i };
                 }
             }
         }
     }
-    winning_moves.insert(
-        key.clone(),
-        MovesChoice {
-            action: winning,
-            results,
-            moves,
-        },
-    );
+    add_move(mat, winning, player, winning_moves, results, moves);
     [winning_moves[&key].results, winning_moves[&key].moves]
+}
+
+fn add_move(
+    mat: [[i32; 3]; 3],
+    mut action: Coord,
+    player: i32,
+    winning_moves: &mut HashMap<String, MovesChoice>,
+    results: f64,
+    moves: f64,
+) {
+    for i in 0..4 {
+        let key = to_key(mat, player, i);
+        let _ = winning_moves.insert(
+            key,
+            MovesChoice {
+                action,
+                results,
+                moves,
+            },
+        );
+        action = rotate_coord(action);
+    }
+}
+
+fn rotate_coord(action: Coord) -> Coord {
+    let y = action.y;
+    let x = action.x;
+    Coord { y: x, x: 2 - y }
 }

@@ -39,21 +39,21 @@ fn main() {
     let mut turn: bool = rand::random();
     while status(board.mat, board.player, board.opponent) == -1 {
         if turn {
-            let key = to_key(board.mat, board.player);
+            let key = to_key(board.mat, board.player, 0);
             let tomove = winning_moves[&key].action;
             board.mat[tomove.y][tomove.x] = board.player;
         } else {
             loop{
-                let corr_range = |i: usize| {(0..3).contains(&i)};  
+                let corr_range = |i: i32| {(0..3).contains(&i)};  
                 let mut input = String::new();
-                println!("insert coords (y, x):");
+                println!("insert coords (x y):");
                 io::stdin().read_line(&mut input).unwrap();
                 //formato della stringa: "y:i32 x:i32"
                 let mut iter = input.trim().split(' ');
-                let y: usize = iter.next().unwrap().parse().unwrap();
-                let x: usize = iter.next().unwrap().parse().unwrap();
-                if corr_range(y) && corr_range(x) && board.mat[y][x] == 0 {
-                    board.mat[y][x] = board.opponent;
+                let x: i32 = iter.next().unwrap().parse().unwrap();
+                let y: i32 = iter.next().unwrap().parse().unwrap();
+                if corr_range(y) && corr_range(x) && board.mat[y as usize][x as usize] == 0 {
+                    board.mat[y as usize][x as usize] = board.opponent;
                     break;
                 }
             }
