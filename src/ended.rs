@@ -2,7 +2,7 @@
 //1 => opponent won
 //2 => draw
 //-1 => continuing
-pub fn status(mat: [[i32; 3]; 3], player: i32, opponent: i32) -> i32 {
+pub fn ended(mat: [[i32; 3]; 3], player: i32, opponent: i32) -> i32 {
     if win(mat, player) {
         return 0;
     }

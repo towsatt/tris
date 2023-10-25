@@ -3,12 +3,23 @@ use std::{collections::HashMap, io, time::Instant};
 mod can_end;
 mod ended;
 mod moves;
+mod rotations;
 mod simulate;
+mod structs;
 
-use ended::status;
-use simulate::{simulate, to_key, MovesChoice};
+use ended::ended;
+use rotations::to_key;
+use simulate::simulate;
+use structs::MovesChoice;
 
 fn main() {
+    let mut winning_moves = HashMap::<String, MovesChoice>::new();
+    simulate([[0; 3]; 3], 1, 2, &mut winning_moves);
+    // println!("{:?}", winning_moves.keys());
+    // play();
+}
+
+fn play() {
     let mut winning_moves = HashMap::<String, MovesChoice>::new();
     let start = Instant::now();
     simulate([[0; 3]; 3], 1, 2, &mut winning_moves);
@@ -36,15 +47,16 @@ fn main() {
         player_symbol: cpu.to_string(),
         opponent_symbol: p1,
     };
-    let mut turn: bool = rand::random();
-    while status(board.mat, board.player, board.opponent) == -1 {
+    let mut turn: bool = false; //rand::random();
+    while ended(board.mat, board.player, board.opponent) == -1 {
         if turn {
             let key = to_key(board.mat, board.player, 0);
+            println!("{key}");
             let tomove = winning_moves[&key].action;
             board.mat[tomove.y][tomove.x] = board.player;
         } else {
-            loop{
-                let corr_range = |i: i32| {(0..3).contains(&i)};  
+            loop {
+                let corr_range = |i: i32| (0..3).contains(&i);
                 let mut input = String::new();
                 println!("insert coords (x y):");
                 io::stdin().read_line(&mut input).unwrap();
@@ -61,7 +73,7 @@ fn main() {
         println!("{board}");
         turn = !turn;
     }
-    match status(board.mat, board.player, board.opponent) {
+    match ended(board.mat, board.player, board.opponent) {
         0 => println!("you lost"),
         1 => println!("you won"),
         2 => println!("draw"),

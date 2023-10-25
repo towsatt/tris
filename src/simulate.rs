@@ -1,6 +1,9 @@
 use crate::can_end::check;
-use crate::ended::status;
+use crate::ended::ended;
 use crate::moves::win;
+use crate::rotations::{add_move, to_key};
+use crate::structs::Coord;
+use crate::structs::MovesChoice;
 
 use std::collections::HashMap;
 
@@ -9,176 +12,78 @@ pub fn simulate(
     player: i32,
     opponent: i32,
     winning_moves: &mut HashMap<String, MovesChoice>,
-) -> [f64; 2] {
-    let key = to_key(mat, player, 0);
-    if winning_moves.contains_key(&key) {
-        return [winning_moves[&key].results, winning_moves[&key].moves];
-    }
-    let stat = check(mat, player, opponent);
-    match stat {
-        0 => {
-            let tomove = win(mat, player);
-            add_move(mat, tomove, player, winning_moves, 1.0, 1.0);
-        }
-        1 => {
-            iterate_mat(mat, player, opponent, winning_moves, key.clone());
-            return [winning_moves[&key].results, winning_moves[&key].moves];
-        }
-        2 => {
-            let ended = status(mat, player, opponent);
-            match ended {
-                0 => return [1.0, 1.0],
-                1 => return [-1.0, 1.0],
-                2 => return [0.0, 1.0],
-                -1 => {
-                    iterate_mat(mat, player, opponent, winning_moves, key.clone());
-                    return [winning_moves[&key].results, winning_moves[&key].moves];
+) -> ([f64; 2], bool) {
+    let ended = ended(mat, player, opponent);
+    let mut forced = false;
+    match ended {
+        0 => ([1.0, 1.0], false),
+        1 => ([-1.0, 1.0], false),
+        2 => ([0.0, 1.0], false),
+        -1 => {
+            let key = to_key(mat, player, 0);
+            let status = check(mat, player, opponent);
+            match status {
+                0 => {
+                    let winning = win(mat, player);
+                    for winn in winning {
+                        add_move(mat, winn, player, winning_moves, 1.0, 1.0);
+                    }
+                    forced = true;
+                }
+                1 => {
+                    let not_losing = win(mat, opponent);
+                    let mut not_losing_move_weight = -2.0;
+                    for not_l in not_losing {
+                        let mut n_mat = mat;
+                        n_mat[not_l.y][not_l.x] = player;
+                        let ([mut results, moves], f) =
+                            simulate(n_mat, opponent, player, winning_moves);
+                        results = -results;
+                        if f && results == 1.0 {
+                            add_move(mat, not_l, player, winning_moves, results, moves);
+                            forced = true;
+                            break;
+                        } else if -results / moves > not_losing_move_weight {
+                            not_losing_move_weight = results / moves;
+                            add_move(mat, not_l, player, winning_moves, results, moves);
+                        }
+                    }
+                }
+                2 => {
+                    let mut best_move = Coord { y: 3, x: 3 };
+                    let mut winning_weight = -2.0;
+                    let mut results = 0.0;
+                    let mut moves = 0.0;
+                    for i in 0..3 {
+                        for j in 0..3 {
+                            if mat[i][j] == 0 {
+                                let mut n_mat = mat;
+                                n_mat[i][j] = player;
+                                let ([mut res, ms], can_force) =
+                                    simulate(n_mat, opponent, player, winning_moves);
+                                res = if res == 0.0 { res } else { -res };
+                                if can_force && (res == -1.0 || res == 1.0) {
+                                    return ([-res, 1.0], true);
+                                }
+                                results += res;
+                                moves += ms;
+                                if res / ms > winning_weight {
+                                    best_move = Coord { y: i, x: j };
+                                    winning_weight = res / ms;
+                                }
+                            }
+                        }
+                    }
+                    add_move(mat, best_move, player, winning_moves, results, moves);
                 }
                 _ => unreachable!(),
             }
+            (choice_to_result(winning_moves[&key]), forced)
         }
         _ => unreachable!(),
     }
-    [winning_moves[&key].results, winning_moves[&key].moves]
 }
 
-pub fn to_key(mat: [[i32; 3]; 3], player: i32, dir: i32) -> String {
-    let mut s = "".to_string();
-    match dir {
-        0 => {
-            for i in mat {
-                for j in i {
-                    s += if j == 0 {
-                        "0"
-                    } else if j == player {
-                        "p"
-                    } else {
-                        "o"
-                    };
-                }
-            }
-        }
-        1 => {
-            for i in 0..3 {
-                for j in (0..3).rev() {
-                    s += if mat[j][i] == 0 {
-                        "0"
-                    } else if mat[j][i] == player {
-                        "p"
-                    } else {
-                        "o"
-                    };
-                }
-            }
-        }
-        2 => {
-            for i in (0..3).rev() {
-                for j in (0..3).rev() {
-                    s += if mat[i][j] == 0 {
-                        "0"
-                    } else if mat[i][j] == player {
-                        "p"
-                    } else {
-                        "o"
-                    };
-                }
-            }
-        }
-        3 => {
-            for i in (0..3).rev() {
-                for j in mat {
-                    s += if j[i] == 0 {
-                        "0"
-                    } else if j[i] == player {
-                        "p"
-                    } else {
-                        "o"
-                    };
-                }
-            }
-        }
-        _ => unreachable!(),
-    }
-    s
-}
-#[derive(Clone, Copy)]
-pub struct Coord {
-    pub x: usize,
-    pub y: usize,
-}
-pub struct MovesChoice {
-    pub action: Coord,
-    pub results: f64,
-    pub moves: f64,
-}
-
-impl std::fmt::Display for Coord {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "({};{})", self.x, self.y)
-    }
-}
-
-impl std::fmt::Display for MovesChoice {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}: {}", self.action, self.results / self.moves)
-    }
-}
-
-fn iterate_mat(
-    mat: [[i32; 3]; 3],
-    player: i32,
-    opponent: i32,
-    winning_moves: &mut HashMap<String, MovesChoice>,
-    key: String,
-) -> [f64; 2] {
-    let mut results = 0.0;
-    let mut moves = 0.0;
-    let mut winning: Coord = Coord { x: 3, y: 3 };
-    let mut highest_weight = -1.0;
-    for i in 0..3 {
-        for j in 0..3 {
-            if mat[i][j] == 0 {
-                let mut n_mat = mat;
-                n_mat[i][j] = player;
-                let [n_r, n_m] = simulate(n_mat, opponent, player, winning_moves);
-                let n_h_w = (-n_r) / n_m;
-                results -= n_r;
-                moves += n_m;
-                if n_h_w > highest_weight {
-                    highest_weight = n_h_w;
-                    winning = Coord { x: j, y: i };
-                }
-            }
-        }
-    }
-    add_move(mat, winning, player, winning_moves, results, moves);
-    [winning_moves[&key].results, winning_moves[&key].moves]
-}
-
-fn add_move(
-    mat: [[i32; 3]; 3],
-    mut action: Coord,
-    player: i32,
-    winning_moves: &mut HashMap<String, MovesChoice>,
-    results: f64,
-    moves: f64,
-) {
-    for i in 0..4 {
-        let key = to_key(mat, player, i);
-        let _ = winning_moves.insert(
-            key,
-            MovesChoice {
-                action,
-                results,
-                moves,
-            },
-        );
-        action = rotate_coord(action);
-    }
-}
-
-fn rotate_coord(action: Coord) -> Coord {
-    let y = action.y;
-    let x = action.x;
-    Coord { y: x, x: 2 - y }
+fn choice_to_result(mc: MovesChoice) -> [f64; 2] {
+    [mc.results, mc.moves]
 }
