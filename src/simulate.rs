@@ -22,9 +22,7 @@ pub fn simulate(
             match status {
                 0 => {
                     let wins = win(mat, player);
-                    for winn in wins {
-                        add_move(mat, winn, player, winning_moves, 1.0, 1.0);
-                    }
+                    add_move(mat, wins[0], player, winning_moves, 1.0, 1.0);
                     ([1.0, 1.0], true)
                 }
                 1 => {
@@ -45,9 +43,7 @@ pub fn simulate(
                             if mat[i][j] == 0
                                 && win(mat, opponent).iter().all(|x| x.y != i && x.x != j)
                             {
-                                let mut n_mat = mat;
-                                n_mat[i][j] = player;
-                                simulate(n_mat, opponent, player, winning_moves);
+                                add_move(mat, Coord{y: i, x: j}, opponent, winning_moves, 1.0, 1.0);
                             }
                         }
                     }

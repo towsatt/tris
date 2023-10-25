@@ -13,13 +13,6 @@ use simulate::simulate;
 use structs::MovesChoice;
 
 fn main() {
-    // let mut winning_moves = HashMap::<String, MovesChoice>::new();
-    // simulate([[0; 3]; 3], 1, 2, &mut winning_moves);
-    // println!("{:?}", winning_moves.keys());
-    play();
-}
-
-fn play() {
     let mut winning_moves = HashMap::<String, MovesChoice>::new();
     let start = Instant::now();
     simulate([[0; 3]; 3], 1, 2, &mut winning_moves);
@@ -61,8 +54,8 @@ fn play() {
                 io::stdin().read_line(&mut input).unwrap();
                 //formato della stringa: "y:i32 x:i32"
                 let mut iter = input.trim().split(' ');
-                let x: i32 = iter.next().unwrap().parse().unwrap();
-                let y: i32 = iter.next().unwrap().parse().unwrap();
+                let x: i32 = get_next(iter.next());
+                let y: i32 = get_next(iter.next());
                 if corr_range(y) && corr_range(x) && board.mat[y as usize][x as usize] == 0 {
                     board.mat[y as usize][x as usize] = board.opponent;
                     break;
@@ -103,5 +96,19 @@ impl std::fmt::Display for Board {
             writeln!(f, "{} | {} | {}", helper(0), helper(1), helper(2),)?;
         }
         Ok(())
+    }
+}
+
+fn get_next(n: Option<&str>) -> i32{
+    match n{
+        Some(val) => get_value(val),
+        None => -1,
+    }
+}
+
+fn get_value(val: &str) -> i32{
+    match val.parse(){
+        Ok(val) => val,
+        Err(_val) => -1,
     }
 }
