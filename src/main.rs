@@ -47,7 +47,7 @@ fn play() {
         player_symbol: cpu.to_string(),
         opponent_symbol: p1,
     };
-    let mut turn: bool = false; //rand::random();
+    let mut turn: bool = rand::random();
     while ended(board.mat, board.player, board.opponent) == -1 {
         if turn {
             let key = to_key(board.mat, board.player, 0);
