@@ -14,71 +14,68 @@ pub fn simulate(
     winning_moves: &mut HashMap<String, MovesChoice>,
 ) -> ([f64; 2], bool) {
     let ended = ended(mat, player, opponent);
-    let mut forced = false;
     match ended {
-        0 => ([1.0, 1.0], false),
-        1 => ([-1.0, 1.0], false),
         2 => ([0.0, 1.0], false),
         -1 => {
             let key = to_key(mat, player, 0);
             let status = check(mat, player, opponent);
             match status {
                 0 => {
-                    let winning = win(mat, player);
-                    for winn in winning {
+                    let wins = win(mat, player);
+                    for winn in wins {
                         add_move(mat, winn, player, winning_moves, 1.0, 1.0);
                     }
-                    forced = true;
+                    ([1.0, 1.0], true)
                 }
                 1 => {
-                    let not_losing = win(mat, opponent);
-                    let mut not_losing_move_weight = -2.0;
-                    for not_l in not_losing {
+                    let losing = win(mat, opponent);
+                    let mut max_w = -2.0;
+                    let mut ff = false;
+                    for l in losing {
                         let mut n_mat = mat;
-                        n_mat[not_l.y][not_l.x] = player;
-                        let ([mut results, moves], f) =
-                            simulate(n_mat, opponent, player, winning_moves);
-                        results = -results;
-                        if f && results == 1.0 {
-                            add_move(mat, not_l, player, winning_moves, results, moves);
-                            forced = true;
-                            break;
-                        } else if -results / moves > not_losing_move_weight {
-                            not_losing_move_weight = results / moves;
-                            add_move(mat, not_l, player, winning_moves, results, moves);
+                        n_mat[l.y][l.x] = player;
+                        let ([res, mvs], f) = simulate(n_mat, opponent, player, winning_moves);
+                        if -res / mvs > max_w {
+                            max_w = -res / mvs;
+                            add_move(mat, l, player, winning_moves, -res, mvs);
+                            ff = f;
                         }
                     }
+                    (choice_to_result(winning_moves[&key]), ff)
                 }
                 2 => {
-                    let mut best_move = Coord { y: 3, x: 3 };
-                    let mut winning_weight = -2.0;
+                    let mut max_w = -2.0;
+                    let mut winning = Coord { x: 3, y: 3 };
+                    let mut b_res = 0.0;
+                    let mut b_mvs = 0.0;
                     let mut results = 0.0;
                     let mut moves = 0.0;
+                    let mut ff = false;
                     for i in 0..3 {
                         for j in 0..3 {
                             if mat[i][j] == 0 {
                                 let mut n_mat = mat;
                                 n_mat[i][j] = player;
-                                let ([mut res, ms], can_force) =
+                                let ([mut res, mvs], f) =
                                     simulate(n_mat, opponent, player, winning_moves);
-                                res = if res == 0.0 { res } else { -res };
-                                if can_force && (res == -1.0 || res == 1.0) {
-                                    return ([-res, 1.0], true);
-                                }
+                                res = -res;
                                 results += res;
-                                moves += ms;
-                                if res / ms > winning_weight {
-                                    best_move = Coord { y: i, x: j };
-                                    winning_weight = res / ms;
+                                moves += mvs;
+                                if res / mvs > max_w {
+                                    winning = Coord { x: j, y: i };
+                                    max_w = res / mvs;
+                                    b_res = res;
+                                    b_mvs = mvs;
+                                    ff = f;
                                 }
                             }
                         }
                     }
-                    add_move(mat, best_move, player, winning_moves, results, moves);
+                    add_move(mat, winning, player, winning_moves, b_res, b_mvs);
+                    if ff {([b_res, b_mvs], true)} else {([results, moves], false)}
                 }
                 _ => unreachable!(),
             }
-            (choice_to_result(winning_moves[&key]), forced)
         }
         _ => unreachable!(),
     }

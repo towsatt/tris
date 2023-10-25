@@ -13,10 +13,10 @@ use simulate::simulate;
 use structs::MovesChoice;
 
 fn main() {
-    let mut winning_moves = HashMap::<String, MovesChoice>::new();
-    simulate([[0; 3]; 3], 1, 2, &mut winning_moves);
+    // let mut winning_moves = HashMap::<String, MovesChoice>::new();
+    // simulate([[0; 3]; 3], 1, 2, &mut winning_moves);
     // println!("{:?}", winning_moves.keys());
-    // play();
+    play();
 }
 
 fn play() {
@@ -51,7 +51,6 @@ fn play() {
     while ended(board.mat, board.player, board.opponent) == -1 {
         if turn {
             let key = to_key(board.mat, board.player, 0);
-            println!("{key}");
             let tomove = winning_moves[&key].action;
             board.mat[tomove.y][tomove.x] = board.player;
         } else {
